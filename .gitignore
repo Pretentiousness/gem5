@@ -35,3 +35,4 @@ configs/dram/lowp_sweep.cfg
 .vscode
 typings
 .DS_Store
+smart1D_feb2019.diff

@@ -29,7 +29,7 @@
 
 
 #include "mem/ruby/network/garnet/RoutingUnit.hh"
-
+#include "debug/TestFlag.hh"
 #include "base/cast.hh"
 #include "base/compiler.hh"
 #include "debug/RubyNetwork.hh"
@@ -49,6 +49,7 @@ namespace garnet
 RoutingUnit::RoutingUnit(Router *router)
 {
     m_router = router;
+    initQTable();
     m_routing_table.clear();
     m_weight_table.clear();
 }
@@ -256,7 +257,7 @@ RoutingUnit::outportComputeXY(RouteInfo route,
         // already checked that in outportCompute() function
         panic("x_hops == y_hops == 0");
     }
-
+    DPRINTF(TestFlag, "SrcRouter%d DestRouter%d Router %d, inport_dirn %s, outport_dirn %s , outport_dirnidx %d\n",route.src_router,route.dest_router,my_id, inport_dirn, outport_dirn, m_outports_dirn2idx[outport_dirn]);
     return m_outports_dirn2idx[outport_dirn];
 }
 
@@ -267,7 +268,185 @@ RoutingUnit::outportComputeCustom(RouteInfo route,
                                  int inport,
                                  PortDirection inport_dirn)
 {
-    panic("%s placeholder executed", __FUNCTION__);
+    //learning rate
+    //double alpha = 0.1;
+    std::map<std::tuple<int, int, const char*>, double>& QTable = RoutingUnit::getQTable();
+    //initialize outport direction
+    int outport_dirn = -1;
+    //get destination router id
+    int dest_id = route.dest_router;
+    //get my router id
+    int my_id = m_router->get_id();
+    //for all outport directions (west, east, north, south) compare the q value from the qtable for the given dest_id and select the one which has the highest value
+    double Qval = -1;
+    for (auto it = m_outports_idx2dirn.begin(); it != m_outports_idx2dirn.end(); ++it){   
+        if((it->second) != "Local"){
+            if (Qval < QTable[std::make_tuple(my_id,dest_id,it->second.c_str())])
+            {
+                Qval = QTable[std::make_tuple(my_id,dest_id,it->second.c_str())];
+                outport_dirn = it->first;
+            }
+        }
+    }
+    //check if the Qval is valid
+    assert(Qval != -1);
+    //check if the outport direction is valid
+    assert(outport_dirn != -1);
+    //Update the Q value in the Q table
+    //QTable[prevRouterID(inport_dirn)][dest_id][m_outports_dirn2idx[routeDirn(inport_dirn)]]  += alpha * (maxQval - Qval);
+    //decayTable(0.1,Qval);
+    return outport_dirn;
+}
+
+
+PortDirection 
+RoutingUnit::routeDirn(PortDirection inport_dirn)
+{
+    PortDirection prev_dirn = "Unknown";
+    if (inport_dirn == "North") {
+        prev_dirn = "South";
+    } else if (inport_dirn == "South") {
+        prev_dirn = "North";
+    } else if (inport_dirn == "East") {
+        prev_dirn = "West";
+    } else if (inport_dirn == "West") {
+        prev_dirn = "East";
+    } else {
+        prev_dirn = "Unknown";
+    }
+    assert(prev_dirn != "Unknown");//check if the direction is valid
+    return prev_dirn;
+}
+
+
+int 
+RoutingUnit::prevRouterID(PortDirection inport_dirn , int my_id)
+{
+    int routerID = -1;
+    if (inport_dirn == "North") {
+        routerID = my_id + m_router->get_net_ptr()->getNumRows();
+    } else if (inport_dirn == "South") {
+        routerID = my_id - m_router->get_net_ptr()->getNumRows();
+    } else if (inport_dirn == "East") {
+        routerID = my_id + 1;
+    } else if (inport_dirn == "West") {
+        routerID = my_id - 1;
+    } else {
+        routerID = -1;
+    }
+    assert(routerID != -1);//check if the router id is valid
+    return routerID;
+}
+
+void
+RoutingUnit::initQTable()
+{
+    std::map<std::tuple<int, int, const char*>, double>& QTable = RoutingUnit::getQTable();
+    static bool initialized = false;
+    if (!initialized) 
+    {
+    int num_routers = 16;
+    for (int i = 0; i < num_routers; i++)
+    {   
+        for (int j = 0; j < num_routers; j++)
+        {
+            if(i==j)
+            {
+            continue;
+            }
+            QTable.insert({std::make_tuple(i, j, "North"), 0});
+            QTable.insert({std::make_tuple(i, j, "South"), 0});
+            QTable.insert({std::make_tuple(i, j, "East"), 0});
+            QTable.insert({std::make_tuple(i, j, "West"), 0});
+            PortDirection shortest_path = calculateShortestPaths(i,j);
+            if (shortest_path == "North")
+            {
+            QTable[std::make_tuple(i, j, "North")] = 1;
+            QTable[std::make_tuple(i, j, "South")] = 0;
+            QTable[std::make_tuple(i, j, "East")] = 0;
+            QTable[std::make_tuple(i, j, "West")] = 0;
+            }
+            else if (shortest_path == "South")
+            {
+            QTable[std::make_tuple(i, j, "North")] = 0;
+            QTable[std::make_tuple(i, j, "South")] = 1;
+            QTable[std::make_tuple(i, j, "East")] = 0;
+            QTable[std::make_tuple(i, j, "West")] = 0;
+            }
+            else if (shortest_path == "East")
+            {
+            QTable[std::make_tuple(i, j, "North")] = 0;
+            QTable[std::make_tuple(i, j, "South")] = 0;
+            QTable[std::make_tuple(i, j, "East")] = 1;
+            QTable[std::make_tuple(i, j, "West")] = 0;
+            }
+            else if (shortest_path == "West")
+            {
+            QTable[std::make_tuple(i, j, "North")] = 0;
+            QTable[std::make_tuple(i, j, "South")] = 0;
+            QTable[std::make_tuple(i, j, "East")] = 0;
+            QTable[std::make_tuple(i, j, "West")] = 1;
+            }
+            else
+            {
+            QTable[std::make_tuple(i, j, "North")] = 0;
+            QTable[std::make_tuple(i, j, "South")] = 0;
+            QTable[std::make_tuple(i, j, "East")] = 0;
+            QTable[std::make_tuple(i, j, "West")] = 0;
+            }
+        }
+        
+    }
+    initialized = true;
+    }
+    
+}
+
+PortDirection
+RoutingUnit::calculateShortestPaths(int src, int dest)
+{
+    //hard coded rightnow for a 4x4 mesh network
+    //need to generalize for any mesh network
+    PortDirection outport_dirn = "Unknown";
+    int num_cols = 4;
+    int my_id = src;
+    int my_x = my_id % num_cols;
+    int my_y = my_id / num_cols;
+
+    int dest_id = dest;
+    int dest_x = dest_id % num_cols;
+    int dest_y = dest_id / num_cols;
+
+    int x_hops = abs(dest_x - my_x);
+    int y_hops = abs(dest_y - my_y);
+
+    bool x_dirn = (dest_x >= my_x);
+    bool y_dirn = (dest_y >= my_y);
+
+    // already checked that in outportCompute() function
+    assert(!(x_hops == 0 && y_hops == 0));
+
+    if (x_hops > 0) {
+        if (x_dirn)
+            outport_dirn = "East";
+        else
+            outport_dirn = "West";
+    } 
+    else if (y_hops > 0) {
+        if (y_dirn)
+            outport_dirn = "North";
+        else
+            outport_dirn = "South";
+    } 
+    else
+        panic("x_hops == y_hops == 0");
+    return outport_dirn;
+}
+
+std::map<std::tuple<int, int, const char*>, double>& 
+RoutingUnit::getQTable() {
+    static std::map<std::tuple<int, int, const char*>, double> m_QTable;
+    return m_QTable;
 }
 
 } // namespace garnet

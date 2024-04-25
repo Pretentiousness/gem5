@@ -36,7 +36,7 @@ SimObject('GarnetLink.py', enums=['CDCType'], sim_objects=[
     'GarnetExtLink'])
 SimObject('GarnetNetwork.py', sim_objects=[
     'GarnetNetwork', 'GarnetNetworkInterface', 'GarnetRouter'])
-
+DebugFlag("TestFlag")
 Source('GarnetLink.cc')
 Source('GarnetNetwork.cc')
 Source('InputUnit.cc')

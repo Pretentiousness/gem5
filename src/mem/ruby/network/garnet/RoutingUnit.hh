@@ -82,6 +82,21 @@ class RoutingUnit
     // of vnets or if the vector supports all vnets.
     bool supportsVnet(int vnet, std::vector<int> sVnets);
 
+    // Adaptive Routing
+    // Returns the previous router port outport direction
+    PortDirection routeDirn(PortDirection inport_dirn);
+
+    // Returns the previous router ID
+    int prevRouterID(PortDirection inport_dirn , int my_id);
+
+    // Returns the QTable
+    static std::map<std::tuple<int, int, const char*>, double>& getQTable();
+
+    //initialize QTable
+    void initQTable();
+
+    // Returns the shortest path from one router to other for all output ports
+    PortDirection calculateShortestPaths(int src, int dest);
 
   private:
     Router *m_router;
@@ -96,7 +111,6 @@ class RoutingUnit
     std::map<int, PortDirection> m_outports_idx2dirn;
     std::map<PortDirection, int> m_outports_dirn2idx;
 };
-
 } // namespace garnet
 } // namespace ruby
 } // namespace gem5
