@@ -84,13 +84,13 @@ class RoutingUnit
 
     // Adaptive Routing
     // Returns the previous router port outport direction
-    PortDirection routeDirn(PortDirection inport_dirn);
+    int routeDirn(PortDirection inport_dirn);
 
     // Returns the previous router ID
     int prevRouterID(PortDirection inport_dirn , int my_id);
 
     // Returns the QTable
-    static std::map<std::tuple<int, int, const char*>, double>& getQTable();
+    std::vector<std::vector<double>>& getQTable() { return m_QTable; }
 
     //initialize QTable
     void initQTable();
@@ -104,6 +104,7 @@ class RoutingUnit
     // Routing Table
     std::vector<std::vector<NetDest>> m_routing_table;
     std::vector<int> m_weight_table;
+    std::vector<std::vector<double>> m_QTable;
 
     // Inport and Outport direction to idx maps
     std::map<PortDirection, int> m_inports_dirn2idx;

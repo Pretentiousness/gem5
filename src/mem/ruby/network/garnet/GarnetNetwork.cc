@@ -128,6 +128,10 @@ GarnetNetwork::init()
         // implementing XY or custom routing in RoutingUnit.cc
         m_num_rows = getNumRows();
         m_num_cols = m_routers.size() / m_num_rows;
+        for (int i = 0; i < m_routers.size(); i++) {
+            // initialize the router's QTable
+            m_routers[i]->get_routing_unit_ptr()->initQTable();
+        }
         assert(m_num_rows * m_num_cols == m_routers.size());
     } else {
         m_num_rows = -1;
