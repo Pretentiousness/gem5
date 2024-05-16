@@ -86,6 +86,9 @@ class RoutingUnit
     // Returns the previous router port outport direction
     int routeDirn(PortDirection inport_dirn);
 
+    // Returns the perpendicular directions of the argument direction
+    std::vector<int> perpendicularDirn(int dirn);
+
     // Returns the previous router ID
     int prevRouterID(PortDirection inport_dirn , int my_id);
 

@@ -269,8 +269,6 @@ RoutingUnit::outportComputeCustom(RouteInfo route,
                                  int inport,
                                  PortDirection inport_dirn)
 {
-    //learning rate
-    double alpha = 0.1;
     std::vector<std::vector<double>>& QTable = RoutingUnit::getQTable();
     //initialize outport direction
     PortDirection outport_dirn = "Unknown";
@@ -295,34 +293,53 @@ RoutingUnit::outportComputeCustom(RouteInfo route,
     assert(outport_dirn != "Unknown");
     if (inport_dirn == "Local")
         return m_outports_dirn2idx[outport_dirn];
-    GarnetNetwork* network = m_router->get_net_ptr(); // Assume this is initialized
-    double latency = network->getPacketNetworkLatencyValue();
+
+    //network pointer
+    GarnetNetwork* network = m_router->get_net_ptr();
+
+    //average latency
+    double latency = network->getFlitNetworkLatency()/network->getFlitsReceived();
     static double old_latency = 0;
-    double reward = alpha*(1/1+std::exp(-((latency-old_latency)/1000)));
+
+    //R value
+    double rVal = 1.0 / (1.0 + exp(-(network->getFlitsReceived() / network->getFlitsInjected()))) - 0.3;
+
+    //get previous router Qtable
     const std::vector<Router*>& Routers = network->getRouters();
     Router* prevRouter = Routers[prevRouterID(inport_dirn, my_id)];
     std::vector<std::vector<double>>& PrevRouterQTable = prevRouter->get_routing_unit_ptr()->getQTable();
-    if (old_latency > latency)
+
+    if (latency > old_latency)
     {
-        //Increase the Q value in the Q table
-        PrevRouterQTable[dest_id][routeDirn(inport_dirn)] += reward;
-        old_latency = latency;
-        DPRINTF(TestFlag, "SrcRouter%d DestRouter%d Router %d, inport_dirn %s, outport_dirn %s , outport_dirnidx %d , Updated Value %f\n"
-        ,route.src_router,route.dest_router,my_id, inport_dirn, outport_dirn, m_outports_dirn2idx[outport_dirn], PrevRouterQTable[dest_id][routeDirn(inport_dirn)] );
+        PrevRouterQTable[dest_id][routeDirn(inport_dirn)] -= (rVal)*PrevRouterQTable[dest_id][routeDirn(inport_dirn)];
+        if(PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]]!=-100)
+        PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]] +=
+        (rVal*0.25)*PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]];
+        if(PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]]!=-100)
+        PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]] +=
+        (rVal*0.25)*PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]];
+
+        DPRINTF(TestFlag, "SrcRouter%d DestRouter%d CurRouter %d, inport_dirn %s, outport_dirn %s ,  Updated Values %f %f %f\n"
+        ,route.src_router,route.dest_router,my_id, inport_dirn, outport_dirn, PrevRouterQTable[dest_id][routeDirn(inport_dirn)]
+        ,PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]], PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]] );
     }
     else if (old_latency == latency)
-        return m_outports_dirn2idx[outport_dirn];
-    else
     {
-        //Decrease the Q value in the Q table
-        PrevRouterQTable[dest_id][routeDirn(inport_dirn)] -= reward;;
-        old_latency = latency;
-        DPRINTF(TestFlag, "SrcRouter%d DestRouter%d Router %d, inport_dirn %s, outport_dirn %s , outport_dirnidx %d , Updated Value %f\n"
-        ,route.src_router,route.dest_router,my_id, inport_dirn, outport_dirn, m_outports_dirn2idx[outport_dirn], PrevRouterQTable[dest_id][routeDirn(inport_dirn)] );
+        PrevRouterQTable[dest_id][routeDirn(inport_dirn)] += (rVal)*PrevRouterQTable[dest_id][routeDirn(inport_dirn)];
+        if(PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]]!=-100)
+        PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]] -=
+        (rVal*0.25)*PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]];
+        if(PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]]!=-100)
+        PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]] -=
+        (rVal*0.25)*PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]];
+
+        DPRINTF(TestFlag, "SrcRouter%d DestRouter%d CurRouter %d, inport_dirn %s, outport_dirn %s ,  Updated Values %f %f %f\n"
+        ,route.src_router,route.dest_router,my_id, inport_dirn, outport_dirn, PrevRouterQTable[dest_id][routeDirn(inport_dirn)]
+        ,PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[0]], PrevRouterQTable[dest_id][perpendicularDirn(routeDirn(inport_dirn))[1]]);
     }
+    old_latency = latency;
     return m_outports_dirn2idx[outport_dirn];
 }
-
 
 int
 RoutingUnit::routeDirn(PortDirection inport_dirn)
@@ -340,6 +357,20 @@ RoutingUnit::routeDirn(PortDirection inport_dirn)
     return prev_dirn;
 }
 
+std::vector<int>
+RoutingUnit::perpendicularDirn(int dirn)
+{
+    std::vector<int> prev_dirn;
+    if (dirn == 0)
+        prev_dirn = {2,3};
+    else if (dirn == 1)
+        prev_dirn = {3,2};
+    else if (dirn == 2)
+        prev_dirn = {0,1};
+    else
+        prev_dirn = {1,0};
+    return prev_dirn;
+}
 
 int
 RoutingUnit::prevRouterID(PortDirection inport_dirn , int my_id)
@@ -368,10 +399,10 @@ void RoutingUnit::initQTable()
         if (myId == i)
             continue;
         PortDirection shortest_path = calculateShortestPaths(myId,i);
-        m_QTable[i][0] = (shortest_path == "North") ? 1 : -100;
-        m_QTable[i][1] = (shortest_path == "South") ? 1 : -100;
-        m_QTable[i][2] = (shortest_path == "East") ? 1 : -100;
-        m_QTable[i][3] = (shortest_path == "West") ? 1 : -100;
+        m_QTable[i][0] = (shortest_path == "North") ? 0.5 : -100;
+        m_QTable[i][1] = (shortest_path == "South") ? 0.5 : -100;
+        m_QTable[i][2] = (shortest_path == "East")  ? 0.5 : -100;
+        m_QTable[i][3] = (shortest_path == "West")  ? 0.5 : -100;
     }
     for (int i = 0; i < num_routers; i++)
     {
@@ -380,13 +411,13 @@ void RoutingUnit::initQTable()
         for (auto it = m_outports_idx2dirn.begin(); it != m_outports_idx2dirn.end(); it++)
         {
             if (it->second == "North" && m_QTable[i][0] != 1)
-                m_QTable[i][0] = 0;
+                m_QTable[i][0] = 0.1;
             if (it->second == "South" && m_QTable[i][1] != 1)
-                m_QTable[i][1] = 0;
+                m_QTable[i][1] = 0.1;
             if (it->second == "East"  && m_QTable[i][2] != 1)
-                m_QTable[i][2] = 0;
+                m_QTable[i][2] = 0.1;
             if (it->second == "West"  && m_QTable[i][3] != 1)
-                m_QTable[i][3] = 0;
+                m_QTable[i][3] = 0.1;
         }
     }
 }
