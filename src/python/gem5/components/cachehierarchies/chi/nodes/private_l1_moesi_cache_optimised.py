@@ -29,8 +29,8 @@ from m5.objects import (
     ClockDomain,
     RubyCache,
     RubyNetwork,
+    TreePLRURP,
 )
-from m5.objects.ReplacementPolicies import TreePLRURP
 
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA

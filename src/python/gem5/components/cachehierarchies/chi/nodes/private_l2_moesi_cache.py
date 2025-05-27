@@ -24,13 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from m5.objects import SHiPPCRP  # ship replacement
+from m5.objects import SignaturePathPrefetcherV2  # prefetcher
 from m5.objects import (
     NULL,
     ClockDomain,
     RubyCache,
     RubyNetwork,
+    TreePLRURP,
 )
-from m5.objects.ReplacementPolicies import TreePLRURP
 
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA
@@ -38,7 +40,7 @@ from gem5.isas import ISA
 from .abstract_node import AbstractNode
 
 
-class PrivateL1MOESICache(AbstractNode):
+class PrivateL2MOESICache(AbstractNode):
     def __init__(
         self,
         size: str,
@@ -48,7 +50,6 @@ class PrivateL1MOESICache(AbstractNode):
         cache_line_size,
         target_isa: ISA,
         clk_domain: ClockDomain,
-        is_Icache: bool,
     ):
         super().__init__(network, cache_line_size)
 
@@ -56,14 +57,14 @@ class PrivateL1MOESICache(AbstractNode):
             size=size,
             assoc=assoc,
             start_index_bit=self.getBlockSizeBits(),
-            is_icache=is_Icache,
-            replacement_policy=TreePLRURP(),
+            replacement_policy=SHiPPCRP(),  # ship replacement
         )
 
         self.clk_domain = clk_domain
         self.send_evictions = core.requires_send_evicts()
-        self.use_prefetcher = False
-        self.prefetcher = NULL
+        self.use_prefetcher = True  # prefetcher enable
+        self.prefetcher = SignaturePathPrefetcherV2()
+        self.cache.prefetcher = self.prefetcher
 
         # Only applies to home nodes
         self.is_HN = False
@@ -84,9 +85,9 @@ class PrivateL1MOESICache(AbstractNode):
         self.dealloc_backinv_unique = True
         self.dealloc_backinv_shared = True
         # Some reasonable default TBE params
-        self.number_of_TBEs = 16
+        self.number_of_TBEs = 32
         self.number_of_repl_TBEs = 16
-        self.number_of_snoop_TBEs = 4
+        self.number_of_snoop_TBEs = 8
         self.number_of_DVM_TBEs = 16
         self.number_of_DVM_snoop_TBEs = 4
         self.unify_repl_TBEs = False

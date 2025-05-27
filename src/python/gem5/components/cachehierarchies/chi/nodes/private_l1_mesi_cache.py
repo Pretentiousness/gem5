@@ -29,8 +29,8 @@ from m5.objects import (
     ClockDomain,
     RubyCache,
     RubyNetwork,
+    TreePLRURP,
 )
-from m5.objects.ReplacementPolicies import TreePLRURP
 
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA
@@ -38,7 +38,7 @@ from gem5.isas import ISA
 from .abstract_node import AbstractNode
 
 
-class PrivateL1MOESICache(AbstractNode):
+class PrivateL1MESICache(AbstractNode):
     def __init__(
         self,
         size: str,
@@ -71,7 +71,7 @@ class PrivateL1MOESICache(AbstractNode):
         self.enable_DCT = False
 
         # MOESI states for a 1 level cache
-        self.allow_SD = True
+        self.allow_SD = False
         self.alloc_on_seq_acc = True
         self.alloc_on_seq_line_write = False
         self.alloc_on_readshared = True

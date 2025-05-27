@@ -24,13 +24,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from m5.objects import SHiPPCRP  # ship replacement
 from m5.objects import (
     NULL,
     ClockDomain,
     RubyCache,
     RubyNetwork,
+    TreePLRURP,
 )
-from m5.objects.ReplacementPolicies import TreePLRURP
 
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA
@@ -38,7 +39,7 @@ from gem5.isas import ISA
 from .abstract_node import AbstractNode
 
 
-class PrivateL1MOESICache(AbstractNode):
+class SharedL3MOESICache(AbstractNode):
     def __init__(
         self,
         size: str,
@@ -48,7 +49,6 @@ class PrivateL1MOESICache(AbstractNode):
         cache_line_size,
         target_isa: ISA,
         clk_domain: ClockDomain,
-        is_Icache: bool,
     ):
         super().__init__(network, cache_line_size)
 
@@ -56,8 +56,7 @@ class PrivateL1MOESICache(AbstractNode):
             size=size,
             assoc=assoc,
             start_index_bit=self.getBlockSizeBits(),
-            is_icache=is_Icache,
-            replacement_policy=TreePLRURP(),
+            replacement_policy=SHiPPCRP(),
         )
 
         self.clk_domain = clk_domain

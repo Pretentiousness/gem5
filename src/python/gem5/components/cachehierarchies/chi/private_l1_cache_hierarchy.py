@@ -32,8 +32,8 @@ from m5.objects import (
     RubyPortProxy,
     RubySequencer,
     RubySystem,
+    SubSystem,
 )
-from m5.objects.SubSystem import SubSystem
 
 from gem5.coherence_protocol import CoherenceProtocol
 from gem5.utils.requires import requires
@@ -162,6 +162,7 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
             cache_line_size=board.get_cache_line_size(),
             target_isa=board.get_processor().get_isa(),
             clk_domain=board.get_clock_domain(),
+            is_Icache=False,
         )
         cluster.icache = PrivateL1MOESICache(
             size=self._size,
@@ -171,6 +172,7 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
             cache_line_size=board.get_cache_line_size(),
             target_isa=board.get_processor().get_isa(),
             clk_domain=board.get_clock_domain(),
+            is_Icache=True,
         )
 
         cluster.icache.sequencer = RubySequencer(
