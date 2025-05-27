@@ -37,7 +37,9 @@ from .abstract_node import AbstractNode
 
 
 class DMARequestor(AbstractNode):
-    def __init__(self, network, cache_line_size, clk_domain: ClockDomain):
+    def __init__(
+        self, network, cache_line_size, clk_domain: ClockDomain, sequencer
+    ):
         super().__init__(network, cache_line_size)
 
         # Dummy cache
@@ -45,6 +47,7 @@ class DMARequestor(AbstractNode):
             dataAccessLatency=0, tagAccessLatency=1, size="128", assoc=1
         )
 
+        self.sequencer = sequencer
         self.clk_domain = clk_domain
 
         # Only applies to home nodes

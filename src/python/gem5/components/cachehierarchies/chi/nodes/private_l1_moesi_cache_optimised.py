@@ -29,8 +29,8 @@ from m5.objects import (
     ClockDomain,
     RubyCache,
     RubyNetwork,
-    TreePLRURP,
 )
+from m5.objects.ReplacementPolicies import TreePLRURP
 
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA
@@ -49,6 +49,8 @@ class PrivateL1MOESICache(AbstractNode):
         target_isa: ISA,
         clk_domain: ClockDomain,
         is_Icache: bool,
+        sequencer,
+        prefetcher,
     ):
         super().__init__(network, cache_line_size)
 
@@ -60,10 +62,11 @@ class PrivateL1MOESICache(AbstractNode):
             replacement_policy=TreePLRURP(),
         )
 
+        self.sequencer = sequencer
         self.clk_domain = clk_domain
         self.send_evictions = core.requires_send_evicts()
-        self.use_prefetcher = False
-        self.prefetcher = NULL
+        self.use_prefetcher = prefetcher != NULL
+        self.prefetcher = prefetcher
 
         # Only applies to home nodes
         self.is_HN = False

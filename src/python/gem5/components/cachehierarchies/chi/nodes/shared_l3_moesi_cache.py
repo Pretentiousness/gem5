@@ -30,7 +30,6 @@ from m5.objects import (
     ClockDomain,
     RubyCache,
     RubyNetwork,
-    TreePLRURP,
 )
 
 from gem5.components.processors.abstract_core import AbstractCore
@@ -59,6 +58,7 @@ class SharedL3MOESICache(AbstractNode):
             replacement_policy=SHiPPCRP(),
         )
 
+        self.sequencer = NULL
         self.clk_domain = clk_domain
         self.send_evictions = core.requires_send_evicts()
         self.use_prefetcher = False
@@ -71,21 +71,21 @@ class SharedL3MOESICache(AbstractNode):
 
         # MOESI states for a 1 level cache
         self.allow_SD = True
-        self.alloc_on_seq_acc = True
+        self.alloc_on_seq_acc = False
         self.alloc_on_seq_line_write = False
         self.alloc_on_readshared = True
-        self.alloc_on_readunique = True
+        self.alloc_on_readunique = False
         self.alloc_on_readonce = True
-        self.alloc_on_writeback = False  # Should never happen in an L1
-        self.alloc_on_atomic = False
-        self.dealloc_on_unique = False
+        self.alloc_on_writeback = True
+        self.alloc_on_atomic = True
+        self.dealloc_on_unique = True
         self.dealloc_on_shared = False
-        self.dealloc_backinv_unique = True
-        self.dealloc_backinv_shared = True
+        self.dealloc_backinv_unique = False
+        self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        self.number_of_TBEs = 16
-        self.number_of_repl_TBEs = 16
-        self.number_of_snoop_TBEs = 4
-        self.number_of_DVM_TBEs = 16
-        self.number_of_DVM_snoop_TBEs = 4
+        self.number_of_TBEs = 32
+        self.number_of_repl_TBEs = 32
+        self.number_of_snoop_TBEs = 1  # should not receive any snoop
+        self.number_of_DVM_TBEs = 1  # should not receive any dvm
+        self.number_of_DVM_snoop_TBEs = 1  # should not receive any dvm
         self.unify_repl_TBEs = False

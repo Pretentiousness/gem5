@@ -154,26 +154,6 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
         for the core with a split I/D cache.
         """
         cluster = SubSystem()
-        cluster.dcache = PrivateL1MOESICache(
-            size=self._size,
-            assoc=self._assoc,
-            network=self.ruby_system.network,
-            core=core,
-            cache_line_size=board.get_cache_line_size(),
-            target_isa=board.get_processor().get_isa(),
-            clk_domain=board.get_clock_domain(),
-            is_Icache=False,
-        )
-        cluster.icache = PrivateL1MOESICache(
-            size=self._size,
-            assoc=self._assoc,
-            network=self.ruby_system.network,
-            core=core,
-            cache_line_size=board.get_cache_line_size(),
-            target_isa=board.get_processor().get_isa(),
-            clk_domain=board.get_clock_domain(),
-            is_Icache=True,
-        )
 
         cluster.icache.sequencer = RubySequencer(
             version=core_num,
@@ -186,6 +166,29 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
             dcache=cluster.dcache.cache,
             clk_domain=cluster.dcache.clk_domain,
             ruby_system=self.ruby_system,
+        )
+
+        cluster.dcache = PrivateL1MOESICache(
+            size=self._size,
+            assoc=self._assoc,
+            network=self.ruby_system.network,
+            core=core,
+            cache_line_size=board.get_cache_line_size(),
+            target_isa=board.get_processor().get_isa(),
+            clk_domain=board.get_clock_domain(),
+            is_Icache=False,
+            sequencer=cluster.dcache.sequencer,
+        )
+        cluster.icache = PrivateL1MOESICache(
+            size=self._size,
+            assoc=self._assoc,
+            network=self.ruby_system.network,
+            core=core,
+            cache_line_size=board.get_cache_line_size(),
+            target_isa=board.get_processor().get_isa(),
+            clk_domain=board.get_clock_domain(),
+            is_Icache=True,
+            sequencer=cluster.icache.sequencer,
         )
 
         if board.has_io_bus():

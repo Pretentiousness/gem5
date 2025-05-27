@@ -1,4 +1,3 @@
-from itertools import chain
 from typing import (
     List,
     Optional,
@@ -313,17 +312,18 @@ class ThreeLevelMOESICacheHierarchy(AbstractRubyCacheHierarchy):
         num_cores = len(board.get_processor().get_cores())
 
         for i, port in enumerate(board.get_dma_ports()):
+            version = len(board.get_processor().get_cores()) + i
+            sequencer = RubySequencer(
+                version=version,
+                in_ports=port,
+                ruby_system=self.ruby_system,
+            )
+            # Create DMA controller with sequencer
             ctrl = DMARequestor(
                 self.ruby_system.network,
                 board.get_cache_line_size(),
                 board.get_clock_domain(),
-            )
-            # Assign version numbers after core sequencers
-            version = num_cores * 2 + i
-            ctrl.sequencer = RubySequencer(
-                version=version,
-                in_ports=port,
-                ruby_system=self.ruby_system,
+                sequencer=sequencer,
             )
             ctrl.sequencer.dcache = NULL
             ctrl.ruby_system = self.ruby_system

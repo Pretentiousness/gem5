@@ -49,6 +49,7 @@ class PrivateL1MOESICache(AbstractNode):
         target_isa: ISA,
         clk_domain: ClockDomain,
         is_Icache: bool,
+        sequencer,
     ):
         super().__init__(network, cache_line_size)
 
@@ -60,6 +61,7 @@ class PrivateL1MOESICache(AbstractNode):
             replacement_policy=TreePLRURP(),
         )
 
+        self.sequencer = sequencer
         self.clk_domain = clk_domain
         self.send_evictions = core.requires_send_evicts()
         self.use_prefetcher = False
